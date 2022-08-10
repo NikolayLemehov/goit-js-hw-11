@@ -1,6 +1,7 @@
 :root {
   --timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   --animation-duration: 250ms;
+  --transition: var(--timing-function) var(--animation-duration);
   --main-txt-cl: #212121;
   --main-cl: #5a7cff;
   --main-bg-cl: #e3e9ff;
@@ -11,6 +12,10 @@
   margin-right: auto;
   margin-left: auto;
   padding: 20px;
+}
+
+.search-btn {
+  cursor: pointer;
 }
 
 .gallery-wrapper {
@@ -41,7 +46,15 @@
   padding: 10px 20px;
   border: 3px solid var(--main-cl);
   border-radius: 5px;
+  color: currentColor;
   background-color: var(--main-bg-cl);
+  transition: color var(--transition), background-color var(--transition);
+  cursor: pointer;
+}
+
+.load-more:hover {
+  color: var(--main-bg-cl);
+  background-color: var(--main-txt-cl);
 }
 
 .load-more.is-hidden {
@@ -72,7 +85,7 @@
   width: 100%;
   height: 240px;
   object-fit: cover;
-  transition: transform var(--animation-duration) var(--timing-function);
+  transition: transform var(--transition);
 }
 
 .info {
