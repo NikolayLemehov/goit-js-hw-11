@@ -6,8 +6,12 @@ import { getSearchImage, ITEMS_PER_PAGE } from './api';
 import { photoCardTemplate } from './templates/photo-card.template';
 import { Notify } from 'notiflix';
 
+import { btnValue, initSwitchBtn } from './switchBtn';
+
+let hasMoreButton = true;
 let gallery = null;
 let onClickLoadMoreBtn = null;
+let currentPage = null;
 const refs = {
   form: document.querySelector('.search-form'),
   formInput: document.querySelector('.search-form [name="searchQuery"]'),
@@ -16,14 +20,26 @@ const refs = {
   loadMoreBtn: document.querySelector('.load-more'),
 };
 
+initSwitchBtn();
 refs.form.addEventListener('submit', onSubmitForm);
+window.addEventListener('toggleLoadingType', (e) => {
+  console.log(e.detail.type)
+  switch (e.detail.type) {
+    case btnValue.BUTTON:
+      hasMoreButton = true;
+      break;
+    case btnValue.SCROLL:
+      hasMoreButton = false;
+      break;
+  }
+})
 
 async function onSubmitForm(e) {
   e.preventDefault();
 
   removeChildren(refs.gallery);
-  const inputValue = refs.formInput.value.trim();
-  // const inputValue = 'towel';
+  // const inputValue = refs.formInput.value.trim();
+  const inputValue = 'towel';
   if (inputValue === '') {
     Notify.warning(`Enter, please, any value in the field.`);
 
@@ -33,38 +49,74 @@ async function onSubmitForm(e) {
 }
 
 function loadingImages(page, value) {
+  currentPage = page;
   return async () => {
     removeMoreEvent(onClickLoadMoreBtn);
+    let data;
 
     try {
-      const data = await getSearchImage({ page, value });
-      if (data.totalHits === 0 && page === 1) {
-        Notify.info(`Sorry, there are no images matching your search query. Please try again.`);
-      }
-      if (page === 1) {
-        Notify.info(`Hooray! We found ${data.totalHits} images.`);
-      }
-      renderGalleryList(data.hits);
-
-      const isVisibleBtn = getIsVisibleLoadMoreBtn({
-        totalHits: data.totalHits,
-        page,
-        perPage: ITEMS_PER_PAGE,
-      });
-
-      if (isVisibleBtn) {
-        refs.loadMoreBtn.classList.remove('is-hidden');
-        onClickLoadMoreBtn = loadingImages(page + 1, value);
-        refs.loadMoreBtn.addEventListener('click', onClickLoadMoreBtn,
-          { once: true });
-      } else {
-        refs.loadMoreBtn.classList.add('is-hidden');
-        Notify.info(`We're sorry, but you've reached the end of search results.`);
-      }
+      data = await getSearchImage({ page, value });
     } catch (e) {
       Notify.failure(e.message);
     }
+
+    if (data.totalHits === 0 && page === 1) {
+      Notify.info(`Sorry, there are no images matching your search query. Please try again.`);
+    }
+    if (page === 1) {
+      Notify.info(`Hooray! We found ${data.totalHits} images.`);
+    }
+
+    renderGalleryList(data.hits)
+
+    const isMoreItems = getIsVisibleLoadMoreBtn({
+      totalHits: data.totalHits,
+      page,
+      perPage: ITEMS_PER_PAGE,
+    });
+
+    if (isMoreItems) {
+      if (hasMoreButton) {
+        addLoadMoreBtn(page, value);
+      } else {
+        addObserver(() => loadingImages(page + 1, value)());
+      }
+    } else {
+      removeLoadMoreBtn();
+    }
   };
+}
+
+// function implementLoadingType() {
+//
+// }
+
+function addLoadMoreBtn(page, value) {
+  refs.loadMoreBtn.classList.remove('is-hidden');
+  onClickLoadMoreBtn = loadingImages(page + 1, value);
+  refs.loadMoreBtn.addEventListener('click', onClickLoadMoreBtn,
+    { once: true });
+}
+
+function removeLoadMoreBtn() {
+  refs.loadMoreBtn.classList.add('is-hidden');
+  Notify.info(`We're sorry, but you've reached the end of search results.`);
+}
+
+function addObserver(cb) {
+  const options = {
+    rootMargin: '0px 0px 0px 0px',
+    threshold: 0,
+  };
+  const callback = (entries, observer) => entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    cb();
+    // observer.destroy();
+    observer.unobserve(entry.target);
+    // observer.observe(refs.gallery.lastElementChild);
+  });
+  const observer = new IntersectionObserver(callback, options);
+  observer.observe(refs.gallery.lastElementChild);
 }
 
 function removeMoreEvent(onEvent) {
