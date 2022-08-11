@@ -12,6 +12,8 @@ let hasMoreButton = true;
 let gallery = null;
 let onClickLoadMoreBtn = null;
 let currentPage = null;
+let currentImageData = null;
+let currentImageValue = null;
 const refs = {
   form: document.querySelector('.search-form'),
   formInput: document.querySelector('.search-form [name="searchQuery"]'),
@@ -23,7 +25,6 @@ const refs = {
 initSwitchBtn();
 refs.form.addEventListener('submit', onSubmitForm);
 window.addEventListener('toggleLoadingType', (e) => {
-  console.log(e.detail.type)
   switch (e.detail.type) {
     case btnValue.BUTTON:
       hasMoreButton = true;
@@ -32,14 +33,21 @@ window.addEventListener('toggleLoadingType', (e) => {
       hasMoreButton = false;
       break;
   }
+  const implementData = {
+    data: currentImageData,
+    page: currentPage,
+    value: currentImageValue,
+  }
+  implementLoadingType(implementData)
 })
 
 async function onSubmitForm(e) {
   e.preventDefault();
 
   removeChildren(refs.gallery);
-  // const inputValue = refs.formInput.value.trim();
-  const inputValue = 'towel';
+  const inputValue = refs.formInput.value.trim();
+  // const inputValue = 'towel';
+  currentImageValue = inputValue;
   if (inputValue === '') {
     Notify.warning(`Enter, please, any value in the field.`);
 
@@ -56,6 +64,7 @@ function loadingImages(page, value) {
 
     try {
       data = await getSearchImage({ page, value });
+      currentImageData = data;
     } catch (e) {
       Notify.failure(e.message);
     }
@@ -69,27 +78,28 @@ function loadingImages(page, value) {
 
     renderGalleryList(data.hits)
 
-    const isMoreItems = getIsVisibleLoadMoreBtn({
-      totalHits: data.totalHits,
-      page,
-      perPage: ITEMS_PER_PAGE,
-    });
-
-    if (isMoreItems) {
-      if (hasMoreButton) {
-        addLoadMoreBtn(page, value);
-      } else {
-        addObserver(() => loadingImages(page + 1, value)());
-      }
-    } else {
-      removeLoadMoreBtn();
-    }
+    implementLoadingType({ data, page, value })
   };
 }
 
-// function implementLoadingType() {
-//
-// }
+function implementLoadingType({ data, page, value }) {
+  if (!data) return;
+  const isMoreItems = getIsVisibleLoadMoreBtn({
+    totalHits: data.totalHits,
+    page,
+    perPage: ITEMS_PER_PAGE,
+  });
+
+  if (isMoreItems) {
+    if (hasMoreButton) {
+      addLoadMoreBtn(page, value);
+    } else {
+      addObserver(() => loadingImages(page + 1, value)());
+    }
+  } else {
+    removeLoadMoreBtn();
+  }
+}
 
 function addLoadMoreBtn(page, value) {
   refs.loadMoreBtn.classList.remove('is-hidden');
@@ -111,7 +121,6 @@ function addObserver(cb) {
   const callback = (entries, observer) => entries.forEach(entry => {
     if (!entry.isIntersecting) return;
     cb();
-    // observer.destroy();
     observer.unobserve(entry.target);
     // observer.observe(refs.gallery.lastElementChild);
   });
