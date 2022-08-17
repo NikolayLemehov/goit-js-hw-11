@@ -11,9 +11,12 @@ import { btnValue, initSwitchBtn } from './switchBtn';
 let hasMoreButton = true;
 let gallery = null;
 let onClickLoadMoreBtn = null;
-let currentPage = null;
-let currentImageData = null;
-let currentImageValue = null;
+let removeObserver = null;
+const currentImages = {
+  page: null,
+  backData: null,
+  value: null,
+};
 const refs = {
   form: document.querySelector('.search-form'),
   formInput: document.querySelector('.search-form [name="searchQuery"]'),
@@ -34,12 +37,13 @@ window.addEventListener('toggleLoadingType', (e) => {
       break;
   }
   const implementData = {
-    data: currentImageData,
-    page: currentPage,
-    value: currentImageValue,
-  }
-  implementLoadingType(implementData)
-})
+    data: currentImages.backData,
+    page: currentImages.page,
+    value: currentImages.value,
+  };
+  implementLoadingType(implementData);
+});
+
 
 async function onSubmitForm(e) {
   e.preventDefault();
@@ -47,27 +51,27 @@ async function onSubmitForm(e) {
   removeChildren(refs.gallery);
   const inputValue = refs.formInput.value.trim();
   // const inputValue = 'towel';
-  currentImageValue = inputValue;
+  currentImages.value = inputValue;
   if (inputValue === '') {
     Notify.warning(`Enter, please, any value in the field.`);
-
     return false;
   }
   return loadingImages(1, inputValue)();
 }
 
 function loadingImages(page, value) {
-  currentPage = page;
+  currentImages.page = page;
   return async () => {
     removeMoreEvent(onClickLoadMoreBtn);
     let data;
 
     try {
       data = await getSearchImage({ page, value });
-      currentImageData = data;
+      currentImages.backData = data;
     } catch (e) {
       Notify.failure(e.message);
     }
+    const pagesValue = Math.ceil(data.totalHits / ITEMS_PER_PAGE);
 
     if (data.totalHits === 0 && page === 1) {
       Notify.info(`Sorry, there are no images matching your search query. Please try again.`);
@@ -75,10 +79,13 @@ function loadingImages(page, value) {
     if (page === 1) {
       Notify.info(`Hooray! We found ${data.totalHits} images.`);
     }
+    if (pagesValue > 0 && page === pagesValue) {
+      Notify.info(`We're sorry, but you've reached the end of search results.`);
+    }
 
-    renderGalleryList(data.hits)
+    renderGalleryList(data.hits);
 
-    implementLoadingType({ data, page, value })
+    implementLoadingType({ data, page, value });
   };
 }
 
@@ -93,8 +100,12 @@ function implementLoadingType({ data, page, value }) {
   if (isMoreItems) {
     if (hasMoreButton) {
       addLoadMoreBtn(page, value);
+      if (typeof removeObserver === 'function') {
+        removeObserver()
+      }
     } else {
-      addObserver(() => loadingImages(page + 1, value)());
+      removeLoadMoreBtn();
+      removeObserver = addObserver(() => loadingImages(page + 1, value)());
     }
   } else {
     removeLoadMoreBtn();
@@ -110,12 +121,11 @@ function addLoadMoreBtn(page, value) {
 
 function removeLoadMoreBtn() {
   refs.loadMoreBtn.classList.add('is-hidden');
-  Notify.info(`We're sorry, but you've reached the end of search results.`);
 }
 
 function addObserver(cb) {
   const options = {
-    rootMargin: '0px 0px 0px 0px',
+    rootMargin: '0px 0px -350px 0px',
     threshold: 0,
   };
   const callback = (entries, observer) => entries.forEach(entry => {
@@ -126,6 +136,9 @@ function addObserver(cb) {
   });
   const observer = new IntersectionObserver(callback, options);
   observer.observe(refs.gallery.lastElementChild);
+  return () => {
+    observer.unobserve(refs.gallery.lastElementChild);
+  };
 }
 
 function removeMoreEvent(onEvent) {
