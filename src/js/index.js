@@ -50,7 +50,6 @@ async function onSubmitForm(e) {
 
   removeChildren(refs.gallery);
   const inputValue = refs.formInput.value.trim();
-  // const inputValue = 'towel';
   currentImages.value = inputValue;
   if (inputValue === '') {
     Notify.warning(`Enter, please, any value in the field.`);
@@ -132,7 +131,6 @@ function addObserver(cb) {
     if (!entry.isIntersecting) return;
     cb();
     observer.unobserve(entry.target);
-    // observer.observe(refs.gallery.lastElementChild);
   });
   const observer = new IntersectionObserver(callback, options);
   observer.observe(refs.gallery.lastElementChild);
