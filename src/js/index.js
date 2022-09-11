@@ -75,7 +75,7 @@ function loadingImages(page, value) {
     if (data.totalHits === 0 && page === 1) {
       Notify.info(`Sorry, there are no images matching your search query. Please try again.`);
     }
-    if (page === 1) {
+    if (data.totalHits > 0 && page === 1) {
       Notify.info(`Hooray! We found ${data.totalHits} images.`);
     }
     if (pagesValue > 0 && page === pagesValue) {
